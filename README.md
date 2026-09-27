@@ -1,134 +1,135 @@
 # FIREBOT
 
-Robô autónomo de combate a incêndios. Numa sala com obstáculos, procura uma
-chama, aproxima-se dela sem bater em nada, apaga-a com uma ventoinha e regressa
-ao ponto de partida orientado pela direcção do giroscópio.
+Autonomous fire-fighting robot. In a room with obstacles it searches for a
+flame, approaches it without hitting anything, puts it out with a fan, and
+returns to its starting point on a gyroscope heading.
 
-Construído no âmbito de Elementos de Robótica, na Licenciatura em Engenharia
-Biomédica da Universidade Lusófona, Faculdade de Engenharia. Apresentado
-publicamente na Noite dos Investigadores 2026, a 25 de Setembro, com poster A3
-e demonstração ao vivo.
+Built for Elementos de Robótica in the Biomedical Engineering degree at
+Universidade Lusófona, Faculdade de Engenharia. Presented publicly at Noite dos
+Investigadores 2026 on 25 September, with an A3 poster and a live
+demonstration.
 
-![O FIREBOT visto de lado](media/firebot-lado.jpg)
+![The FIREBOT seen from the side](media/firebot-lado.jpg)
 
-## A missão
+## The mission
 
-1. **Procura.** Roda devagar até o sensor de chama detectar o infravermelho da
-   vela.
-2. **Aproxima-se.** Avança e usa os três sonares para evitar obstáculos.
-3. **Apaga.** Pára perto da vela e liga a ventoinha.
-4. **Volta.** Regressa orientado pela direcção do giroscópio.
+1. **Search.** Turn slowly until the flame sensor picks up the infrared from
+   the candle.
+2. **Approach.** Drive forward, using the three sonars to avoid obstacles.
+3. **Extinguish.** Stop near the candle and run the fan.
+4. **Return.** Head back on the gyroscope heading.
 
-O alvo é uma vela simulada, construída de propósito: chama impressa em 3D,
-LEDs a tremeluzir e um emissor de infravermelhos. O sensor de chama responde
-entre cerca de 760 e 1100 nm, pelo que o alvo de teste tem de emitir nessa
-gama para ser detectável. O programa da vela está em `firmware/vela/`.
+The target is a simulated candle, built for the purpose: a 3D-printed flame
+over flickering LEDs with an infrared emitter inside. The flame sensor responds
+between roughly 760 and 1100 nm, so the test target has to emit in that band to
+be detectable at all. The candle program is in `firmware/vela/`.
 
-## Estrutura
+## Layout
 
 ```
 firmware/
-  missao-autonoma/   missão completa e resolução de labirinto (v8.3)
-  telemetria/        build de demonstração, telemetria e comandos
-  vela/              programa da vela simulada
-app-pc/              aplicação de ambiente de trabalho em C#
-docs/                componentes, ligações, pinos, estados, montagem,
-                     calibração e alimentação
-media/               poster A3 e fotografias
+  missao-autonoma/   full mission and maze solving (v8.3)
+  telemetria/        demonstration build, telemetry and commands
+  vela/              simulated candle program
+app-pc/              C# desktop application
+docs/                components, wiring, pin map, state machine,
+                     assembly, calibration and power (in Portuguese)
+media/               A3 poster and photographs
 ```
 
 ### firmware/missao-autonoma
 
-Build de 1341 linhas com a missão autónoma. Máquina de dezasseis estados,
-onde `BUSCA`, `LOCALIZAR`, `APROXIMAR`, `EXTINGUIR` e `RETORNAR` conduzem a
-missão e os restantes cobrem o modo labirinto, condução manual, calibração e
-os testes por módulo. Inclui escalonamento dos servos por estado, velocidade
-adaptativa, um contador de confiança que exige cinco confirmações antes de
-assumir a chama, e um mapa básico do labirinto impresso na porta série no fim
-de cada percurso.
+The 1341-line autonomous build. A sixteen-state machine, where `BUSCA`,
+`LOCALIZAR`, `APROXIMAR`, `EXTINGUIR` and `RETORNAR` carry the mission and the
+rest cover maze mode, manual driving, calibration and the per-module test
+states. It includes a servo scheduler per state, adaptive speed, a confidence
+counter that requires five consecutive confirmations before committing to a
+flame, and a basic map of the maze printed over serial at the end of each run.
 
 ### firmware/telemetria
 
-Build separado, de 996 linhas, escrito para a demonstração pública. Reporta
-todos os sensores dez vezes por segundo numa linha por trama, com as três
-distâncias dos sonares, intensidade da chama contra a base calibrada,
-direcção, inclinação, as duas tensões de alimentação e o esforço dos motores
-e da ventoinha. Sai pela USB e pelo rádio ao mesmo tempo, e aceita comandos
-por qualquer um dos dois.
+A separate 996-line build written for the public demonstration. It reports
+every sensor ten times a second, one line per frame, carrying the three sonar
+ranges, flame intensity against its calibrated ambient baseline, heading, pitch
+and roll, both battery rails, and the motor and fan duty. Output goes to USB
+and the radio at the same time, and commands are accepted from either.
 
-Duas decisões de comportamento em falha que vale a pena conhecer antes de
-mexer no código: os motores param sozinhos 500 ms após o último comando, para
-que uma quebra de ligação pare o robô em vez de o deixar em andamento; e um
-módulo que não esteja ligado é reportado como ausente em vez de interromper o
-ciclo, para que um robô a que falte um sensor continue a demonstrar tudo o
-resto.
+Two failure behaviours are worth knowing before changing anything: motors stop
+by themselves 500 ms after the last command, so a dropped link stops the robot
+rather than leaving it driving; and a module that is not connected is reported
+as absent instead of halting the loop, so a robot missing a sensor still
+demonstrates everything else.
 
-Manter os dois builds separados foi deliberado: permitiu tornar a versão que
-enfrentou o público mais conservadora sem tocar no código que carrega a missão
-autónoma.
+Keeping the two builds separate was deliberate. It allowed the version that
+faced an audience to be made conservative without touching the code carrying
+the autonomous mission.
 
 ### app-pc
 
-Aplicação em C# que desenha os retornos dos sonares em radar, a direcção, o
-canal da chama e os controlos dos motores. Liga-se por BLE a um módulo BT24
-através do canal de dados FFE1. O firmware trata esse rádio como porta série
-comum, e é por isso que o mesmo conjunto de comandos funciona por cabo e por
-ar. Compila com o `csc` da .NET Framework contra os `.winmd` do Windows, sem
-SDK instalado, o que permite corrê-la a partir de uma pasta em qualquer
-máquina.
+A C# application drawing the sonar returns as a radar, along with heading, the
+flame channel and the motor controls. It connects over BLE to a BT24 module
+through the FFE1 data channel. The firmware treats that radio as an ordinary
+serial port, which is why the same command set works over cable and over the
+air. It compiles with the .NET Framework `csc` against the Windows `.winmd`
+files with no SDK installed, so it runs from a folder on any machine.
 
-![A aplicação em funcionamento durante a demonstração](media/firebot-stand.jpg)
+![The application running during the demonstration](media/firebot-stand.jpg)
 
 ## Hardware
 
-Arduino Mega 2560, três sonares HC-SR04, giroscópio, ecrã LCD 16×2 por I2C,
-sensor de chama por infravermelhos, ventoinha accionada por MOSFET, receptor
-de infravermelhos para comando, LEDs e buzzer de aviso, e duas fontes
-independentes, uma para os motores e outra para a lógica.
+Arduino Mega 2560, three HC-SR04 sonars, an InvenSense-family gyroscope, a 16×2
+I2C display, an infrared flame sensor, a MOSFET-driven fan, an infrared
+receiver for the remote, warning LEDs and a buzzer, and two independent
+supplies, one for the motors and one for the logic.
 
-A lista completa, com quantidades, pinos e notas de montagem, está em
-[`docs/COMPONENTES.md`](docs/COMPONENTES.md) e
+The full list, with quantities, pins and assembly notes, is in
+[`docs/COMPONENTES.md`](docs/COMPONENTES.md) and
 [`docs/LIGACOES.md`](docs/LIGACOES.md).
 
-**Nota sobre a documentação.** Os ficheiros em `docs/` foram escritos para uma
-fase anterior do robô, a do seguidor de linha com extintor, e em alguns
-pontos não coincidem com o build apresentado em Setembro: descrevem um
-MPU-6050 onde o poster indica um MPU-6500, e sonares laterais a 30° onde o
-poster indica 28°. Continuam a ser a referência mais completa de montagem e
-calibração que existe, mas confirme contra o hardware antes de seguir um valor
-à letra.
+**On the gyroscope part number.** The firmware does not assume one. It reads
+`WHO_AM_I` at register 0x75 and accepts 0x68 (MPU-6050) as well as 0x70 and
+0x71 (MPU-9250/6500), which is why `mpu.testConnection()` from the MPU6050
+library was replaced with a manual check: that call only recognises 0x68. The
+telemetry build scans the bus and publishes whatever it finds as `WHO:<hex>`,
+so the part actually fitted is identified at boot rather than in a parts list.
 
-## Estado
+**On the documentation.** The files in `docs/` were written for an earlier
+phase, the line follower with extinguisher, and differ from the build shown in
+September on some details: they give the side sonars at 30° where the poster
+gives 28°. They remain the most complete assembly and calibration reference
+that exists, but check against the hardware before taking any single value
+literally.
 
-A missão autónoma foi concluída e testada no primeiro build. O que correu
-perante o público foi o firmware de telemetria, de demonstração.
+## Status
 
-Da tabela de testes do poster: motores e sentido das rodas validados, os três
-sonares validados, giroscópio e ecrã por I2C validados, dados para o PC a dez
-por segundo por cabo e dois por segundo por Bluetooth, paragem sem ordens da
-aplicação em 0,5 s, e ventoinha com arranque suave validada. **O sensor de
-chama está marcado para substituição**: a sensibilidade e o campo de visão
-foram o factor limitante no alcance de detecção fiável, e é a primeira coisa a
-mudar.
+The autonomous mission was completed and tested on the first build. What ran in
+front of the public was the telemetry firmware, the demonstration build.
 
-## O que aprendi
+From the test table on the poster: motors and wheel direction validated, all
+three sonars validated, gyroscope and I2C display validated, data to the PC at
+ten per second over cable and two per second over Bluetooth, stop without
+commands from the application in 0.5 s, and fan soft-start validated. **The
+flame sensor is marked for replacement**: its sensitivity and field of view
+were the limiting factor on reliable detection range, and it is the first thing
+to change.
 
-Ligar cada módulo sem alimentação e confirmar a polaridade evita
-curto-circuitos nos 5 V. Com duas fontes, o GND tem de ser comum para os
-sinais partilharem referência. Testar módulo a módulo contra telemetria em
-tempo real isola uma falha em segundos, ao passo que testar a missão montada
-apenas informa que algo, algures, correu mal; o firmware de telemetria foi
-escrito para a demonstração e acabou por ser a melhor ferramenta de
-diagnóstico do projecto.
+## What I learned
 
-## Autoria
+Connecting each module unpowered and checking polarity first avoids shorting
+the 5 V rail. With two supplies, the grounds have to be tied together or the
+signals share no reference. Testing module by module against live telemetry
+isolates a fault in seconds, where testing the assembled mission only tells you
+that something, somewhere, went wrong; the telemetry firmware was written for
+the demonstration and turned out to be the best diagnostic tool in the project.
 
-André Oliveira Massuça. Licenciatura em Engenharia Biomédica, Universidade
-Lusófona, Faculdade de Engenharia.
+## Author
+
+André Oliveira Massuça. Biomedical Engineering, Universidade Lusófona,
+Faculdade de Engenharia.
 
 [andremassuca.com](https://andremassuca.com) ·
 [ORCID 0009-0005-1527-843X](https://orcid.org/0009-0005-1527-843X)
 
-## Licença
+## Licence
 
-MIT. Ver [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
